@@ -1,7 +1,6 @@
 import sys
 from pathlib import Path
 
-# Asegurar que la raíz del proyecto esté en sys.path
 ROOT_DIR = Path(__file__).resolve().parents[1]
 if str(ROOT_DIR) not in sys.path:
     sys.path.insert(0, str(ROOT_DIR))
@@ -15,44 +14,49 @@ client = TestClient(app)
 
 
 @pytest.fixture(autouse=True)
-def setup_and_teardown_db():
+def reset_database():
     Base.metadata.drop_all(bind=engine)
     Base.metadata.create_all(bind=engine)
     yield
     Base.metadata.drop_all(bind=engine)
 
 
+def make_task_payload(**overrides):
+    payload = {
+        "title": "Tarea por defecto",
+        "description": "Descripción de prueba",
+        "status": "pendiente",
+    }
+    payload.update(overrides)
+    return payload
+
+
 def test_create_task_success():
     response = client.post(
         "/tasks",
-        json={
-            "title": "Tarea de prueba",
-            "description": "Descripción",
-            "status": "pendiente",
-        },
+        json=make_task_payload(title="Tarea de prueba"),
     )
     assert response.status_code == 201
     data = response.json()
     assert data["id"] > 0
     assert data["title"] == "Tarea de prueba"
     assert data["status"] == "pendiente"
+    assert data["description"] == "Descripción de prueba"
     assert "date" in data
 
 
 def test_create_task_without_title_fails():
-    response = client.post(
-        "/tasks",
-        json={
-            "description": "Sin título",
-            "status": "pendiente",
-        },
-    )
+    bad_payload = {
+        "description": "Sin título",
+        "status": "pendiente",
+    }
+    response = client.post("/tasks", json=bad_payload)
     assert response.status_code == 422
 
 
-def test_list_tasks():
-    client.post("/tasks", json={"title": "Tarea 1", "status": "pendiente"})
-    client.post("/tasks", json={"title": "Tarea 2", "status": "pendiente"})
+def test_list_tasks_returns_all_items():
+    client.post("/tasks", json=make_task_payload(title="Tarea 1"))
+    client.post("/tasks", json=make_task_payload(title="Tarea 2"))
 
     response = client.get("/tasks")
     assert response.status_code == 200
@@ -66,7 +70,7 @@ def test_list_tasks():
 def test_get_task_detail_success():
     create_resp = client.post(
         "/tasks",
-        json={"title": "Detalle", "description": "Algo", "status": "pendiente"},
+        json=make_task_payload(title="Detalle", description="Algo"),
     )
     task_id = create_resp.json()["id"]
 
@@ -85,7 +89,7 @@ def test_get_task_not_found():
 def test_update_task_success():
     create_resp = client.post(
         "/tasks",
-        json={"title": "Viejo título", "description": "Desc", "status": "pendiente"},
+        json=make_task_payload(title="Viejo título", description="Desc"),
     )
     task_id = create_resp.json()["id"]
 
@@ -102,7 +106,7 @@ def test_update_task_success():
 def test_update_task_no_fields():
     create_resp = client.post(
         "/tasks",
-        json={"title": "Algo", "description": "Desc", "status": "pendiente"},
+        json=make_task_payload(title="Algo", description="Desc"),
     )
     task_id = create_resp.json()["id"]
 
@@ -121,7 +125,7 @@ def test_update_task_not_found():
 def test_delete_task_success():
     create_resp = client.post(
         "/tasks",
-        json={"title": "Para borrar", "description": "Desc", "status": "pendiente"},
+        json=make_task_payload(title="Para borrar", description="Desc"),
     )
     task_id = create_resp.json()["id"]
 
