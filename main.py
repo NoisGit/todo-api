@@ -83,7 +83,7 @@ def root():
     response_model=Task,
     status_code=status.HTTP_201_CREATED,
 )
-def CREATE(task: TaskCreate, db: Session = Depends(get_db)):
+def create_task(task: TaskCreate, db: Session = Depends(get_db)):
     db_task = TaskModel(
         title=task.title,
         description=task.description,
@@ -97,14 +97,14 @@ def CREATE(task: TaskCreate, db: Session = Depends(get_db)):
 
 
 @app.get("/tasks", response_model=List[Task])
-def LIST(db: Session = Depends(get_db)):
+def list_tasks(db: Session = Depends(get_db)):
     tasks = db.query(TaskModel).all()
     return tasks
 
 
-@app.get("/tasks/{task_id}", response_model=Task)
-def DETAILS(task_id: int, db: Session = Depends(get_db)):
-    task = db.query(TaskModel).filter(TaskModel.id == task_id).first()
+@app.get("/tasks/{details_id}", response_model=Task)
+def get_task_details(details_id: int, db: Session = Depends(get_db)):
+    task = db.query(TaskModel).filter(TaskModel.id == details_id).first()
     if not task:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -113,9 +113,9 @@ def DETAILS(task_id: int, db: Session = Depends(get_db)):
     return task
 
 
-@app.put("/tasks/{task_id}", response_model=Task)
-def UPDATE(task_id: int, task_update: TaskUpdate, db: Session = Depends(get_db)):
-    task = db.query(TaskModel).filter(TaskModel.id == task_id).first()
+@app.put("/tasks/{update_id}", response_model=Task)
+def update_task(update_id: int, task_update: TaskUpdate, db: Session = Depends(get_db)):
+    task = db.query(TaskModel).filter(TaskModel.id == update_id).first()
     if not task:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -140,9 +140,9 @@ def UPDATE(task_id: int, task_update: TaskUpdate, db: Session = Depends(get_db))
     return task
 
 
-@app.delete("/tasks/{task_id}", status_code=status.HTTP_204_NO_CONTENT)
-def DELETE(task_id: int, db: Session = Depends(get_db)):
-    task = db.query(TaskModel).filter(TaskModel.id == task_id).first()
+@app.delete("/tasks/{delete_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_task(delete_id: int, db: Session = Depends(get_db)):
+    task = db.query(TaskModel).filter(TaskModel.id == delete_id).first()
     if not task:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
