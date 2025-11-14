@@ -1,11 +1,13 @@
-from datetime import date
-from typing import List, Optional, Literal
+from datetime import date as date_type
+from enum import Enum
+from typing import List, Optional
 
 from fastapi import FastAPI, Depends, HTTPException, status
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 
 from sqlalchemy import create_engine, Column, Integer, String, Date
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
+
 
 DATABASE_URL = "sqlite:///./tasks.db"
 
@@ -19,39 +21,43 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
 
+class TaskStatus(str, Enum):
+    pendiente = "pendiente"
+    completada = "completada"
+
+
 class TaskModel(Base):
     __tablename__ = "tasks"
 
     id = Column(Integer, primary_key=True, index=True)
     title = Column(String, nullable=False, index=True)
     description = Column(String, nullable=True)
-    status = Column(String, nullable=False, default="pendiente")
-    date = Column(Date, nullable=False, default=date.today)
+    status = Column(String, nullable=False, default=TaskStatus.pendiente.value)
+    date = Column(Date, nullable=False, default=date_type.today)
 
 
-class TaskBase(BaseModel):
+class TaskCreate(BaseModel):
     title: str = Field(..., min_length=1)
     description: Optional[str] = None
-    status: Literal["pendiente", "completada"] = "pendiente"
-    date: Optional[date] = None
-
-
-class TaskCreate(TaskBase):
-    pass
+    status: TaskStatus = TaskStatus.pendiente
+    date: Optional[date_type] = None
 
 
 class TaskUpdate(BaseModel):
     title: Optional[str] = Field(None, min_length=1)
     description: Optional[str] = None
-    status: Optional[Literal["pendiente", "completada"]] = None
-    date: Optional[date] = None
+    status: Optional[TaskStatus] = None
+    date: Optional[date_type] = None
 
 
-class Task(TaskBase):
+class Task(BaseModel):
     id: int
+    title: str
+    description: Optional[str] = None
+    status: TaskStatus
+    date: date_type
 
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 def get_db():
@@ -69,7 +75,7 @@ Base.metadata.create_all(bind=engine)
 
 @app.get("/")
 def root():
-    return {"message": "API de tareas funcionando 👋"}
+    return {"message": "API de tareas funcionando"}
 
 
 @app.post(
@@ -81,8 +87,8 @@ def create(task: TaskCreate, db: Session = Depends(get_db)):
     db_task = TaskModel(
         title=task.title,
         description=task.description,
-        status=task.status,
-        date=task.date or date.today(),
+        status=task.status.value,             
+        date=task.date or date_type.today(),
     )
     db.add(db_task)
     db.commit()
@@ -116,7 +122,7 @@ def update(task_id: int, task_update: TaskUpdate, db: Session = Depends(get_db))
             detail="Task not found",
         )
 
-    update_data = task_update.dict(exclude_unset=True)
+    update_data = task_update.model_dump(exclude_unset=True)
 
     if not update_data:
         raise HTTPException(
@@ -125,6 +131,8 @@ def update(task_id: int, task_update: TaskUpdate, db: Session = Depends(get_db))
         )
 
     for field, value in update_data.items():
+        if field == "status" and value is not None:
+            value = value.value          
         setattr(task, field, value)
 
     db.commit()
