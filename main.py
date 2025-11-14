@@ -83,11 +83,11 @@ def root():
     response_model=Task,
     status_code=status.HTTP_201_CREATED,
 )
-def create(task: TaskCreate, db: Session = Depends(get_db)):
+def CREATE(task: TaskCreate, db: Session = Depends(get_db)):
     db_task = TaskModel(
         title=task.title,
         description=task.description,
-        status=task.status.value,             
+        status=task.status.value,
         date=task.date or date_type.today(),
     )
     db.add(db_task)
@@ -97,13 +97,13 @@ def create(task: TaskCreate, db: Session = Depends(get_db)):
 
 
 @app.get("/tasks", response_model=List[Task])
-def list(db: Session = Depends(get_db)):
+def LIST(db: Session = Depends(get_db)):
     tasks = db.query(TaskModel).all()
     return tasks
 
 
 @app.get("/tasks/{task_id}", response_model=Task)
-def details(task_id: int, db: Session = Depends(get_db)):
+def DETAILS(task_id: int, db: Session = Depends(get_db)):
     task = db.query(TaskModel).filter(TaskModel.id == task_id).first()
     if not task:
         raise HTTPException(
@@ -114,7 +114,7 @@ def details(task_id: int, db: Session = Depends(get_db)):
 
 
 @app.put("/tasks/{task_id}", response_model=Task)
-def update(task_id: int, task_update: TaskUpdate, db: Session = Depends(get_db)):
+def UPDATE(task_id: int, task_update: TaskUpdate, db: Session = Depends(get_db)):
     task = db.query(TaskModel).filter(TaskModel.id == task_id).first()
     if not task:
         raise HTTPException(
@@ -132,7 +132,7 @@ def update(task_id: int, task_update: TaskUpdate, db: Session = Depends(get_db))
 
     for field, value in update_data.items():
         if field == "status" and value is not None:
-            value = value.value          
+            value = value.value
         setattr(task, field, value)
 
     db.commit()
@@ -141,7 +141,7 @@ def update(task_id: int, task_update: TaskUpdate, db: Session = Depends(get_db))
 
 
 @app.delete("/tasks/{task_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete(task_id: int, db: Session = Depends(get_db)):
+def DELETE(task_id: int, db: Session = Depends(get_db)):
     task = db.query(TaskModel).filter(TaskModel.id == task_id).first()
     if not task:
         raise HTTPException(
