@@ -1,20 +1,20 @@
 # To-Do API
 
-API REST simple para gestionar tareas, construida con **FastAPI**, **SQLAlchemy** y **SQLite**.
+A simple REST API for task management, built with **FastAPI**, **SQLAlchemy**, and **SQLite**.
 
-Este proyecto sirve como base para practicar desarrollo backend con Python, estructura de endpoints, validaciones, persistencia en base de datos local y pruebas automatizadas.
+This project is a small backend practice app focused on CRUD endpoints, request validation, local database persistence, and automated checks through GitHub Actions.
 
-## ✨ Funcionalidades
+## Features
 
-- Crear tareas.
-- Listar todas las tareas.
-- Ver el detalle de una tarea por ID.
-- Actualizar una tarea existente.
-- Eliminar una tarea.
-- Validación de datos con Pydantic.
-- Persistencia local con SQLite.
+- Create tasks.
+- List all tasks.
+- Get task details by ID.
+- Update existing tasks.
+- Delete tasks.
+- Validate request data with Pydantic.
+- Store data locally with SQLite.
 
-## 🧰 Stack utilizado
+## Tech Stack
 
 - Python
 - FastAPI
@@ -24,88 +24,90 @@ Este proyecto sirve como base para practicar desarrollo backend con Python, estr
 - Pytest
 - HTTPX
 
-## 📦 Instalación
+## Installation
 
-Clona el repositorio:
+Clone the repository:
 
 ```bash
 git clone https://github.com/NoisGit/todo-api.git
 cd todo-api
 ```
 
-Crea y activa un entorno virtual:
+Create and activate a virtual environment:
 
 ```bash
 python -m venv venv
 ```
 
-En Windows:
+On Windows:
 
 ```bash
 venv\Scripts\activate
 ```
 
-En macOS/Linux:
+On macOS/Linux:
 
 ```bash
 source venv/bin/activate
 ```
 
-Instala las dependencias:
+Install dependencies:
 
 ```bash
 pip install -r requirements.txt
 ```
 
-## 🚀 Ejecutar el proyecto
+## Run the Project
 
 ```bash
 uvicorn main:app --reload
 ```
 
-Luego abre la documentación interactiva:
+Then open the interactive API documentation:
 
 ```text
 http://127.0.0.1:8000/docs
 ```
 
-## 📌 Endpoints principales
+## Main Endpoints
 
-| Método | Ruta | Descripción |
+| Method | Route | Description |
 |---|---|---|
-| GET | `/` | Verifica que la API esté funcionando. |
-| GET | `/tasks` | Lista todas las tareas. |
-| POST | `/tasks` | Crea una nueva tarea. |
-| GET | `/tasks/{details_id}` | Obtiene el detalle de una tarea. |
-| PUT | `/tasks/{update_id}` | Actualiza una tarea. |
-| DELETE | `/tasks/{delete_id}` | Elimina una tarea. |
+| GET | `/` | Checks that the API is running. |
+| GET | `/tasks` | Lists all tasks. |
+| POST | `/tasks` | Creates a new task. |
+| GET | `/tasks/{details_id}` | Gets task details. |
+| PUT | `/tasks/{update_id}` | Updates a task. |
+| DELETE | `/tasks/{delete_id}` | Deletes a task. |
 
-## 🧪 Ejecutar pruebas
+## Run Tests
 
 ```bash
 pytest
 ```
 
-## 📝 Ejemplo de tarea
+## Task Example
 
 ```json
 {
-  "title": "Estudiar FastAPI",
-  "description": "Practicar endpoints CRUD y pruebas automatizadas",
+  "title": "Study FastAPI",
+  "description": "Practice CRUD endpoints and automated tests",
   "status": "pendiente",
   "date": "2026-04-27"
 }
 ```
 
-## 🗺️ Mejoras futuras
+> Note: task status values currently use the existing API values: `pendiente` and `completada`.
 
-- Separar el proyecto en módulos (`routers`, `schemas`, `models`, `database`).
-- Agregar autenticación.
-- Agregar filtros por estado y fecha.
-- Agregar Docker.
-- Agregar configuración por variables de entorno.
-- Preparar deploy.
+## Roadmap
 
-## 👤 Autor
+- Split the project into modules (`routers`, `schemas`, `models`, `database`).
+- Add authentication.
+- Add filters by status and date.
+- Add Docker support.
+- Add environment-based configuration.
+- Prepare deployment setup.
 
-Desarrollado por [NoisGit](https://github.com/NoisGit).
+## Author
+
+Developed by [NoisGit](https://github.com/NoisGit).
