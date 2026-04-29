@@ -3,7 +3,7 @@ import hashlib
 import hmac
 import json
 import secrets
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 from typing import Any, Dict
 
 from fastapi import Depends, HTTPException, status
@@ -20,7 +20,7 @@ settings = get_settings()
 
 
 def utc_now() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.utcnow()
 
 
 def hash_password(password: str) -> str:
@@ -70,7 +70,7 @@ def create_access_token(user_id: int) -> str:
 
 def decode_access_token(token: str) -> Dict[str, Any]:
     try:
-      encoded_header, encoded_payload, encoded_signature = token.split(".")
+        encoded_header, encoded_payload, encoded_signature = token.split(".")
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token") from exc
 
