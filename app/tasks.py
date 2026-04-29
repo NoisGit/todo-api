@@ -2,7 +2,7 @@ from datetime import date as date_type, timedelta
 from typing import Literal, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import func, or_
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from app.audit import add_changed_fields_audit, add_task_audit
@@ -31,7 +31,6 @@ SORT_FIELDS = {
     "priority": TaskModel.priority,
     "due_date": TaskModel.due_date,
 }
-PRIORITY_ORDER = {TaskPriority.high.value: 3, TaskPriority.medium.value: 2, TaskPriority.low.value: 1}
 
 
 def get_owned_task(db: Session, task_id: int, user_id: int, include_deleted: bool = False) -> TaskModel:
@@ -53,10 +52,7 @@ def normalize_task_data(task_data: dict):
 
 
 @router.get("/stats", response_model=TaskStatsResponse)
-def get_task_stats(
-    db: Session = Depends(get_db),
-    current_user: UserModel = Depends(get_current_user),
-):
+def get_task_stats(db: Session = Depends(get_db), current_user: UserModel = Depends(get_current_user)):
     today = date_type.today()
     soon = today + timedelta(days=7)
     base_query = db.query(TaskModel).filter(TaskModel.user_id == current_user.id)
@@ -79,6 +75,57 @@ def get_task_stats(
             TaskModel.status != TaskStatus.completada.value,
         ).count(),
         deleted=base_query.filter(TaskModel.deleted_at.is_not(None)).count(),
+    )
+
+
+@router.post("/bulk/complete", response_model=BulkTaskResponse)
+def complete_tasks_bulk(
+    payload: BulkTaskRequest,
+    db: Session = Depends(get_db),
+    current_user: UserModel = Depends(get_current_user),
+):
+    tasks = (
+        db.query(TaskModel)
+        .filter(TaskModel.user_id == current_user.id, TaskModel.id.in_(payload.task_ids), TaskModel.deleted_at.is_(None))
+        .all()
+    )
+    found_ids = {task.id for task in tasks}
+    now = utc_now()
+
+    for task in tasks:
+        task.status = TaskStatus.completada.value
+        task.completed_at = now
+        add_task_audit(db, task_id=task.id, user_id=current_user.id, action="bulk_completed")
+
+    db.commit()
+    return BulkTaskResponse(
+        processed_ids=sorted(found_ids),
+        not_found_ids=[task_id for task_id in payload.task_ids if task_id not in found_ids],
+    )
+
+
+@router.post("/bulk/delete", response_model=BulkTaskResponse)
+def delete_tasks_bulk(
+    payload: BulkTaskRequest,
+    db: Session = Depends(get_db),
+    current_user: UserModel = Depends(get_current_user),
+):
+    tasks = (
+        db.query(TaskModel)
+        .filter(TaskModel.user_id == current_user.id, TaskModel.id.in_(payload.task_ids), TaskModel.deleted_at.is_(None))
+        .all()
+    )
+    found_ids = {task.id for task in tasks}
+    now = utc_now()
+
+    for task in tasks:
+        task.deleted_at = now
+        add_task_audit(db, task_id=task.id, user_id=current_user.id, action="bulk_deleted")
+
+    db.commit()
+    return BulkTaskResponse(
+        processed_ids=sorted(found_ids),
+        not_found_ids=[task_id for task_id in payload.task_ids if task_id not in found_ids],
     )
 
 
@@ -162,11 +209,7 @@ def list_tasks(
 
 
 @router.get("/{task_id}", response_model=TaskResponse)
-def get_task_details(
-    task_id: int,
-    db: Session = Depends(get_db),
-    current_user: UserModel = Depends(get_current_user),
-):
+def get_task_details(task_id: int, db: Session = Depends(get_db), current_user: UserModel = Depends(get_current_user)):
     return get_owned_task(db, task_id, current_user.id)
 
 
@@ -209,11 +252,7 @@ def update_task(
 
 
 @router.patch("/{task_id}/complete", response_model=TaskResponse)
-def complete_task(
-    task_id: int,
-    db: Session = Depends(get_db),
-    current_user: UserModel = Depends(get_current_user),
-):
+def complete_task(task_id: int, db: Session = Depends(get_db), current_user: UserModel = Depends(get_current_user)):
     task = get_owned_task(db, task_id, current_user.id)
     old_status = task.status
     task.status = TaskStatus.completada.value
@@ -234,11 +273,7 @@ def complete_task(
 
 
 @router.delete("/{task_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_task(
-    task_id: int,
-    db: Session = Depends(get_db),
-    current_user: UserModel = Depends(get_current_user),
-):
+def delete_task(task_id: int, db: Session = Depends(get_db), current_user: UserModel = Depends(get_current_user)):
     task = get_owned_task(db, task_id, current_user.id)
     task.deleted_at = utc_now()
     add_task_audit(db, task_id=task.id, user_id=current_user.id, action="soft_deleted")
@@ -247,11 +282,7 @@ def delete_task(
 
 
 @router.patch("/{task_id}/restore", response_model=TaskResponse)
-def restore_task(
-    task_id: int,
-    db: Session = Depends(get_db),
-    current_user: UserModel = Depends(get_current_user),
-):
+def restore_task(task_id: int, db: Session = Depends(get_db), current_user: UserModel = Depends(get_current_user)):
     task = get_owned_task(db, task_id, current_user.id, include_deleted=True)
     if task.deleted_at is None:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Task is not deleted")
@@ -263,62 +294,7 @@ def restore_task(
     return task
 
 
-@router.post("/bulk/complete", response_model=BulkTaskResponse)
-def complete_tasks_bulk(
-    payload: BulkTaskRequest,
-    db: Session = Depends(get_db),
-    current_user: UserModel = Depends(get_current_user),
-):
-    tasks = (
-        db.query(TaskModel)
-        .filter(TaskModel.user_id == current_user.id, TaskModel.id.in_(payload.task_ids), TaskModel.deleted_at.is_(None))
-        .all()
-    )
-    found_ids = {task.id for task in tasks}
-    now = utc_now()
-
-    for task in tasks:
-        task.status = TaskStatus.completada.value
-        task.completed_at = now
-        add_task_audit(db, task_id=task.id, user_id=current_user.id, action="bulk_completed")
-
-    db.commit()
-    return BulkTaskResponse(
-        processed_ids=sorted(found_ids),
-        not_found_ids=[task_id for task_id in payload.task_ids if task_id not in found_ids],
-    )
-
-
-@router.post("/bulk/delete", response_model=BulkTaskResponse)
-def delete_tasks_bulk(
-    payload: BulkTaskRequest,
-    db: Session = Depends(get_db),
-    current_user: UserModel = Depends(get_current_user),
-):
-    tasks = (
-        db.query(TaskModel)
-        .filter(TaskModel.user_id == current_user.id, TaskModel.id.in_(payload.task_ids), TaskModel.deleted_at.is_(None))
-        .all()
-    )
-    found_ids = {task.id for task in tasks}
-    now = utc_now()
-
-    for task in tasks:
-        task.deleted_at = now
-        add_task_audit(db, task_id=task.id, user_id=current_user.id, action="bulk_deleted")
-
-    db.commit()
-    return BulkTaskResponse(
-        processed_ids=sorted(found_ids),
-        not_found_ids=[task_id for task_id in payload.task_ids if task_id not in found_ids],
-    )
-
-
 @router.get("/{task_id}/history", response_model=list[TaskAuditLogResponse])
-def get_task_history(
-    task_id: int,
-    db: Session = Depends(get_db),
-    current_user: UserModel = Depends(get_current_user),
-):
+def get_task_history(task_id: int, db: Session = Depends(get_db), current_user: UserModel = Depends(get_current_user)):
     task = get_owned_task(db, task_id, current_user.id, include_deleted=True)
     return task.audit_logs
