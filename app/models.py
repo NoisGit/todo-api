@@ -1,4 +1,4 @@
-from datetime import date as date_type, datetime, timezone
+from datetime import date as date_type, datetime
 from enum import Enum
 
 from sqlalchemy import Boolean, Column, Date, DateTime, ForeignKey, Integer, String, Text
@@ -19,7 +19,7 @@ class TaskPriority(str, Enum):
 
 
 def utc_now() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.utcnow()
 
 
 class UserModel(Base):
@@ -28,7 +28,7 @@ class UserModel(Base):
     id = Column(Integer, primary_key=True, index=True)
     email = Column(String(120), unique=True, nullable=False, index=True)
     password_hash = Column(String(255), nullable=False)
-    created_at = Column(DateTime(timezone=True), nullable=False, default=utc_now)
+    created_at = Column(DateTime, nullable=False, default=utc_now)
 
     tasks = relationship("TaskModel", back_populates="owner", cascade="all, delete-orphan")
     refresh_tokens = relationship("RefreshTokenModel", back_populates="user", cascade="all, delete-orphan")
@@ -44,10 +44,10 @@ class TaskModel(Base):
     priority = Column(String(20), nullable=False, default=TaskPriority.medium.value, index=True)
     date = Column(Date, nullable=False, default=date_type.today, index=True)
     due_date = Column(Date, nullable=True, index=True)
-    completed_at = Column(DateTime(timezone=True), nullable=True)
-    deleted_at = Column(DateTime(timezone=True), nullable=True, index=True)
-    created_at = Column(DateTime(timezone=True), nullable=False, default=utc_now)
-    updated_at = Column(DateTime(timezone=True), nullable=False, default=utc_now, onupdate=utc_now)
+    completed_at = Column(DateTime, nullable=True)
+    deleted_at = Column(DateTime, nullable=True, index=True)
+    created_at = Column(DateTime, nullable=False, default=utc_now)
+    updated_at = Column(DateTime, nullable=False, default=utc_now, onupdate=utc_now)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
 
     owner = relationship("UserModel", back_populates="tasks")
@@ -60,9 +60,9 @@ class RefreshTokenModel(Base):
     id = Column(Integer, primary_key=True, index=True)
     token_hash = Column(String(255), unique=True, nullable=False, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
-    expires_at = Column(DateTime(timezone=True), nullable=False)
+    expires_at = Column(DateTime, nullable=False)
     revoked = Column(Boolean, nullable=False, default=False)
-    created_at = Column(DateTime(timezone=True), nullable=False, default=utc_now)
+    created_at = Column(DateTime, nullable=False, default=utc_now)
 
     user = relationship("UserModel", back_populates="refresh_tokens")
 
@@ -77,6 +77,6 @@ class TaskAuditLogModel(Base):
     field_name = Column(String(80), nullable=True)
     old_value = Column(Text, nullable=True)
     new_value = Column(Text, nullable=True)
-    created_at = Column(DateTime(timezone=True), nullable=False, default=utc_now)
+    created_at = Column(DateTime, nullable=False, default=utc_now)
 
     task = relationship("TaskModel", back_populates="audit_logs")
